@@ -27,59 +27,41 @@
                 </button>
             </div>
         </form>
-        <div id="error-message" class="text-center text-red-500"></div>
+        <div id="error-message" class="text-center text-red-500 font-medium"></div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script>
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        const loginForm = document.getElementById('login-form');
-        const errorMessage = document.getElementById('error-message');
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = e.target.email.value;
-            const password = e.target.password.value;
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
 
             try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
+                const response = await fetch('../auth/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
 
-                // Check user role from Firestore
-                const userDoc = await db.collection('users').doc(user.uid).get();
+                const data = await response.json();
 
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.role === 'admin' && userData.status !== 'disabled') {
-                        window.location.href = 'dashboard.php';
-                    } else {
-                        await auth.signOut();
-                        errorMessage.textContent = 'Access denied. You are not an authorized admin.';
-                    }
+                if (!response.ok) {
+                    errorMessage.textContent = data.message || 'An error occurred.';
+                    return;
+                }
+
+                if (data.status === 'success' && data.role === 'admin') {
+                    window.location.href = 'dashboard.php';
                 } else {
-                     await auth.signOut();
-                     errorMessage.textContent = 'User role not found.';
+                     errorMessage.textContent = 'Unauthorized access. Only admins are allowed.';
+                     await fetch('../auth/logout.php');
                 }
 
             } catch (error) {
-                errorMessage.textContent = error.message;
+                errorMessage.textContent = 'Failed to connect to the server.';
+                console.error('Login error:', error);
             }
         });
     </script>
