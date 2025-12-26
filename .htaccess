@@ -1,28 +1,14 @@
-
-# Apache Configuration for SkillPath Builder
-
-# Enable the rewrite engine
 RewriteEngine On
-
-# Set the base path for the rewrite rules.
-# If your project is in a subdirectory (e.g., http://localhost/my-project/),
-# the base should be /my-project/
-# If your project is at the root (http://localhost/), you can set this to /
-# or comment it out.
 RewriteBase /
 
-# --- RULES ---
-
-# 1. If the requested URL is a file that exists, serve it directly.
+# If the requested URL is a file that exists, serve it directly.
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
-# 2. If the requested URL is a directory that exists, serve it directly.
+# If the requested URL is a directory that exists, serve it directly.
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# 3. For any other request, check if a .php file with that name exists.
-# This allows you to use "clean" URLs like /student/dashboard instead of /student/dashboard.php
+# For any other request, check if a .php file with that name exists.
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L]
-
