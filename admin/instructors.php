@@ -1,156 +1,166 @@
+<?php
+require_once __DIR__ . '/../auth/middleware.php';
+requireAdmin();
+require_once __DIR__ . '/../config/db.php';
 
+// Handle status updates
+if (isset($_GET['action'], $_GET['id'])) {
+    if ($_GET['action'] === 'enable' || $_GET['action'] === 'disable') {
+        $status = $_GET['action'] === 'enable' ? 'active' : 'disabled';
+        $id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
+
+        try {
+            $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ? AND role = 'instructor'");
+            $stmt->execute([$status, $id]);
+            header('Location: instructors.php');
+            exit();
+        } catch (PDOException $e) {
+            // Optional: Handle error, e.g., show an error message
+            die("Database error: " . $e->getMessage());
+        }
+    }
+}
+
+// Handle instructor creation
+$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_instructor'])) {
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (empty($name)) $errors[] = 'Name is required.';
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required.';
+    if (empty($password) || strlen($password) < 8) $errors[] = 'Password must be at least 8 characters.';
+
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) {
+                $errors[] = 'Email is already in use.';
+            } else {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, status, first_login) VALUES (?, ?, ?, 'instructor', 'active', 1)");
+                $stmt->execute([$name, $email, $hashedPassword]);
+                header('Location: instructors.php');
+                exit();
+            }
+        } catch (PDOException $e) {
+             $errors[] = "Database error: " . $e->getMessage();
+        }
+    }
+}
+
+// Fetch instructors
+$stmt = $pdo->prepare("SELECT u.id, u.name, u.email, u.created_at, u.status, COUNT(r.id) as roadmap_count FROM users u LEFT JOIN roadmaps r ON u.id = r.instructor_id WHERE u.role = 'instructor' GROUP BY u.id");
+$stmt->execute();
+$instructors = $stmt->fetchAll();
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instructor Management - SkillPath Builder</title>
+    <title>Manage Instructors - Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+<body class="bg-gray-100">
 
-    <div class="flex md:flex-row-reverse flex-wrap">
-
-        <!-- Main Content -->
-        <div class="w-full md:w-4/5 bg-gray-100">
-            <div class="container bg-white rounded-lg shadow-lg p-6 mx-4 mt-4">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold">Instructor Management</h1>
-                    <a href="create_instructor.php" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
-                        Create Instructor
-                    </a>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gray-800 text-white">
-                            <tr>
-                                <th class="w-1/4 text-left py-3 px-4 uppercase font-semibold text-sm">Name</th>
-                                <th class="w-1/4 text-left py-3 px-4 uppercase font-semibold text-sm">Email</th>
-                                <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Roadmaps</th>
-                                <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Joined</th>
-                                <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Status</th>
-                                <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-gray-700" id="instructors-table-body">
-                            <!-- Rows will be inserted here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-1/5 bg-gray-800 text-white h-screen p-4 fixed">
+             <h2 class="text-2xl font-bold mb-10">Admin Panel</h2>
+            <ul>
+                <li><a href="dashboard.php" class="block py-2 px-4 rounded hover:bg-gray-700">Dashboard</a></li>
+                <li><a href="instructors.php" class="block py-2 px-4 rounded bg-gray-700">Instructors</a></li>
+                 <!-- Add other links here -->
+            </ul>
+             <a href="../auth/logout.php" class="block py-2 px-4 rounded hover:bg-red-700 mt-auto">Logout</a>
         </div>
 
-        <!-- Sidebar -->
-        <div class="w-full md:w-1/5 bg-gray-900 md:bg-gray-800 px-2 text-center fixed bottom-0 md:pt-8 md:top-0 md:left-0 h-16 md:h-screen md:border-r-4 md:border-gray-600">
-            <div class="md:relative mx-auto lg:float-right lg:px-6">
-                <ul class="list-reset flex flex-row md:flex-col text-center md:text-left">
-                    <li class="mr-3 flex-1">
-                        <a href="dashboard.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-blue-600">
-                            <i class="fas fa-chart-area pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="mr-3 flex-1">
-                        <a href="roadmaps.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-pink-500">
-                            <i class="fas fa-road pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Roadmaps</span>
-                        </a>
-                    </li>
-                    <li class="mr-3 flex-1">
-                        <a href="#" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-purple-500">
-                            <i class="fas fa-users-cog pr-0 md:pr-3 text-purple-500"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Instructors</span>
-                        </a>
-                    </li>
-                    <li class="mr-3 flex-1">
-                        <a href="students.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-green-500">
-                            <i class="fas fa-user-graduate pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Students</span>
-                        </a>
-                    </li>
-                     <li class="mr-3 flex-1">
-                        <a href="payments.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-red-500">
-                            <i class="fas fa-wallet pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Payments</span>
-                        </a>
-                    </li>
-                     <li class="mr-3 flex-1">
-                        <a href="feedback.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-yellow-500">
-                            <i class="fas fa-comment-dots pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Feedback</span>
-                        </a>
-                    </li>
-                     <li class="mr-3 flex-1">
-                        <a href="login.php" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-gray-500">
-                            <i class="fas fa-sign-out-alt pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Logout</span>
-                        </a>
-                    </li>
-                </ul>
+        <!-- Main Content -->
+        <div class="w-4/5 ml-auto p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Instructor Management</h1>
+                 <button onclick="document.getElementById('create-modal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">+ Create Instructor</button>
             </div>
+
+             <!-- Instructors Table -->
+            <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Roadmaps</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Joined Date</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($instructors)): ?>
+                            <tr><td colspan="5" class="text-center p-4">No instructors found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($instructors as $instructor): ?>
+                                <tr>
+                                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                        <p class="text-gray-900 whitespace-no-wrap"><?= htmlspecialchars($instructor['name']) ?></p>
+                                        <p class="text-gray-600 whitespace-no-wrap text-xs"><?= htmlspecialchars($instructor['email']) ?></p>
+                                    </td>
+                                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center"><?= $instructor['roadmap_count'] ?></td>
+                                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm"><?= date('M d, Y', strtotime($instructor['created_at'])) ?></td>
+                                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                         <span class="relative inline-block px-3 py-1 font-semibold leading-tight <?= $instructor['status'] === 'active' ? 'text-green-900' : 'text-red-900' ?>">
+                                            <span aria-hidden class="absolute inset-0 <?= $instructor['status'] === 'active' ? 'bg-green-200' : 'bg-red-200' ?> opacity-50 rounded-full"></span>
+                                            <span class="relative"><?= ucfirst($instructor['status']) ?></span>
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                        <?php if ($instructor['status'] === 'active'): ?>
+                                            <a href="?action=disable&id=<?= $instructor['id'] ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to disable this instructor?')">Disable</a>
+                                        <?php else: ?>
+                                            <a href="?action=enable&id=<?= $instructor['id'] ?>" class="text-green-600 hover:text-green-900" onclick="return confirm('Are you sure you want to enable this instructor?')">Enable</a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+    <!-- Create Instructor Modal -->
+    <div id="create-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Create New Instructor</h3>
+                <div class="mt-2 px-7 py-3">
+                     <form action="instructors.php" method="POST">
+                        <input type="hidden" name="create_instructor" value="1">
+                        <input class="text-md text-gray-700 w-full mb-3 px-4 py-2 border rounded-md" type="text" name="name" placeholder="Full Name" required>
+                        <input class="text-md text-gray-700 w-full mb-3 px-4 py-2 border rounded-md" type="email" name="email" placeholder="Email Address" required>
+                        <input class="text-md text-gray-700 w-full mb-4 px-4 py-2 border rounded-md" type="password" name="password" placeholder="Temporary Password" required>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Create</button>
+                    </form>
+                    <?php if (!empty($errors)): ?>
+                        <div class="mt-4 text-left text-sm text-red-600">
+                            <?php foreach ($errors as $error): ?><p><?= $error ?></p><?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button onclick="document.getElementById('create-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                db.collection('users').doc(user.uid).get().then(doc => {
-                    if (doc.exists && doc.data().role === 'admin') {
-                        loadInstructors();
-                    } else {
-                        window.location.href = 'login.php';
-                    }
-                });
-            } else {
-                window.location.href = 'login.php';
-            }
-        });
-
-        function loadInstructors() {
-            const tableBody = document.getElementById('instructors-table-body');
-            db.collection('users').where('role', '==', 'instructor').onSnapshot(snapshot => {
-                tableBody.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const instructor = doc.data();
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="text-left py-3 px-4">${instructor.name}</td>
-                        <td class="text-left py-3 px-4">${instructor.email}</td>
-                        <td class="text-left py-3 px-4">0</td>
-                        <td class="text-left py-3 px-4">${new Date(instructor.createdAt.seconds * 1000).toLocaleDateString()}</td>
-                        <td class="text-left py-3 px-4">
-                            <span class="relative inline-block px-3 py-1 font-semibold text-${instructor.status === 'active' ? 'green' : 'red'}-900 leading-tight">
-                                <span aria-hidden class="absolute inset-0 bg-${instructor.status === 'active' ? 'green' : 'red'}-200 opacity-50 rounded-full"></span>
-                                <span class="relative">${instructor.status}</span>
-                            </span>
-                        </td>
-                        <td class="text-left py-3 px-4">
-                            <button onclick="toggleStatus('${doc.id}', '${instructor.status}')" class="text-sm bg-${instructor.status === 'active' ? 'red' : 'green'}-500 hover:bg-${instructor.status === 'active' ? 'red' : 'green'}-700 text-white py-1 px-2 rounded focus:outline-none focus:shadow-outline">
-                                ${instructor.status === 'active' ? 'Disable' : 'Enable'}
-                            </button>
-                        </td>
-                    `;
-                    tableBody.appendChild(tr);
-                });
-            });
-        }
-        
-        function toggleStatus(uid, currentStatus) {
-            const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
-            db.collection('users').doc(uid).update({ status: newStatus });
-        }
-    </script>
-
+    <?php if (!empty($errors)): ?>
+        <script>document.getElementById('create-modal').classList.remove('hidden');</script>
+    <?php endif; ?>
 </body>
 </html>

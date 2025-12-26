@@ -1,101 +1,74 @@
+<?php
+// instructor/dashboard.php
+require_once __DIR__ . '/../auth/middleware.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Full protection for the instructor dashboard
+// 1. Must be logged in
+if (!isset($_SESSION['user_id'])) {
+    redirect('login.php');
+}
+
+// 2. Must have the 'instructor' role
+if ($_SESSION['role'] !== 'instructor') {
+    // If not an instructor, log them out and send to login
+    // This prevents a student or admin from being stuck in a redirect loop
+    session_destroy();
+    redirect('login.php'); 
+}
+
+// 3. Must have completed the first-login password change
+// We fetch this from the session, which was set at login
+if (isset($_SESSION['first_login']) && $_SESSION['first_login']) {
+    redirect('change_password.php');
+}
+
+// Re-verify `first_login` from DB for added security, in case session is stale.
+try {
+    require_once __DIR__ . '/../config/db.php';
+    $stmt = $pdo->prepare("SELECT first_login FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch();
+    if ($user && $user['first_login']) {
+         $_SESSION['first_login'] = true; // Correct the session
+         redirect('change_password.php');
+    }
+} catch (PDOException $e) {
+    die("Database connection error. Please try again later.");
+}
+
+$instructor_name = $_SESSION['name'] ?? 'Instructor';
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instructor Dashboard - SkillPath Builder</title>
+    <title>Instructor Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
-
-    <!-- Basic Navbar -->
-    <nav class="bg-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <h1 class="text-xl font-bold text-indigo-600">SkillPath Builder</h1>
-                    </div>
-                </div>
-                <div class="flex items-center">
-                     <a href="#" id="logout-button" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Logout</a>
-                </div>
-            </div>
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white p-5">
+            <h2 class="text-2xl font-bold mb-10">Instructor Panel</h2>
+            <nav>
+                <a href="dashboard.php" class="block py-2.5 px-4 rounded transition duration-200 bg-gray-700">Dashboard</a>
+                <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">My Roadmaps</a>
+                <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">Students</a>
+                 <a href="../auth/logout.php" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-red-700 mt-10">Logout</a>
+            </nav>
         </div>
-    </nav>
 
-    <!-- Page Content -->
-    <div class="py-10">
-        <header>
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 class="text-3xl font-bold leading-tight text-gray-900">
-                    Instructor Dashboard
-                </h1>
-            </div>
-        </header>
-        <main>
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-                <!-- Replace with your content -->
-                <div class="px-4 py-6 sm:px-0">
-                    <div class="border-4 border-dashed border-gray-200 rounded-lg h-96 p-4 text-center text-gray-500">
-                        Welcome, Instructor! Your dashboard content will go here. You can now start creating and managing your roadmaps.
-                    </div>
-                </div>
-                <!-- /End replace -->
-            </div>
-        </main>
+        <!-- Main Content -->
+        <div class="flex-1 p-10">
+            <h1 class="text-3xl font-bold text-gray-800">Welcome, <?= htmlspecialchars($instructor_name) ?>!</h1>
+            <p class="mt-2 text-gray-600">This is your dashboard. More features will be added soon.</p>
+        </div>
     </div>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // Session Protection
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    // Must be an active instructor
-                    if (userData.role !== 'instructor' || userData.status !== 'active') {
-                        await auth.signOut();
-                        window.location.href = 'login.php';
-                    // Must not be a first-time login
-                    } else if (userData.firstLogin) {
-                        window.location.href = 'change-password.php';
-                    }
-                    // All good, user can stay.
-                } else {
-                     await auth.signOut();
-                     window.location.href = 'login.php';
-                }
-            } else {
-                window.location.href = 'login.php';
-            }
-        });
-
-        // Logout
-        const logoutButton = document.getElementById('logout-button');
-        logoutButton.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await auth.signOut();
-            window.location.href = 'login.php';
-        });
-
-    </script>
-
 </body>
 </html>

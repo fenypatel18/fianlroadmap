@@ -1,3 +1,15 @@
+<?php
+// instructor/login.php
+session_start();
+// If already logged in and not a first-timer, go to dashboard.
+if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'instructor') {
+    if (isset($_SESSION['first_login']) && !$_SESSION['first_login']) {
+        header('Location: dashboard.php');
+        exit();
+    } 
+    // if first_login is true, they should be on change_password.php, but we won't force redirect from login.
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +21,7 @@
 <body class="bg-gray-100 h-screen flex items-center justify-center">
     <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
         <h2 class="text-2xl font-bold text-center text-gray-900">Instructor Login</h2>
-        <form id="login-form" class="space-y-6">
+        <form id="login-form" class="space-y-6" method="POST">
             <div>
                 <label for="email" class="text-sm font-medium text-gray-700">Email address</label>
                 <input id="email" name="email" type="email" autocomplete="email" required
@@ -23,62 +35,49 @@
             <div>
                 <button type="submit"
                     class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Sign in
+                    Sign In
                 </button>
             </div>
         </form>
-        <div id="error-message" class="text-center text-red-500"></div>
+        <div id="error-message" class="text-center text-red-500 font-medium"></div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        const loginForm = document.getElementById('login-form');
-        const errorMessage = document.getElementById('error-message');
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
             errorMessage.textContent = '';
-            const email = e.target.email.value;
-            const password = e.target.password.value;
 
             try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                const userDoc = await db.collection('users').doc(user.uid).get();
+                const response = await fetch('../auth/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
 
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.role === 'instructor' && userData.status === 'active') {
-                        if (userData.firstLogin) {
-                            window.location.href = 'change-password.php';
-                        } else {
-                            window.location.href = 'dashboard.php';
-                        }
+                const data = await response.json();
+
+                if (!response.ok) {
+                    errorMessage.textContent = data.message || 'An error occurred.';
+                    return;
+                }
+
+                if (data.status === 'success' && data.role === 'instructor') {
+                    if (data.change_password) {
+                        window.location.href = 'change_password.php';
                     } else {
-                        await auth.signOut();
-                        errorMessage.textContent = 'Access denied. Not an active instructor.';
+                        window.location.href = 'dashboard.php';
                     }
                 } else {
-                     await auth.signOut();
-                     errorMessage.textContent = 'User role not found.';
+                    errorMessage.textContent = 'Unauthorized access or invalid role.';
+                    // Destroy any session that might have been created for a non-instructor
+                     await fetch('../auth/logout.php');
                 }
             } catch (error) {
-                errorMessage.textContent = error.message;
+                errorMessage.textContent = 'Failed to connect to the server.';
+                console.error('Login error:', error);
             }
         });
     </script>
