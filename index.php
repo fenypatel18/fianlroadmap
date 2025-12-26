@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$explore_link = isset($_SESSION['user_id']) ? '/student/explore_roadmaps.php' : '/student/login.php';
+$explore_link = isset($_SESSION['user_id']) ? '/student/explore_roadmaps.php' : '/auth/login.php';
 
 ?>
 <!DOCTYPE html>
@@ -29,7 +29,7 @@ $explore_link = isset($_SESSION['user_id']) ? '/student/explore_roadmaps.php' : 
                  <?php if (isset($_SESSION['user_id'])): ?>
                     <a href="/<?php echo $_SESSION['role']; ?>/dashboard.php" class="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 transition-all">Dashboard</a>
                 <?php else: ?>
-                    <a href="/auth/login_selector.php" class="text-gray-600 hover:text-indigo-600 transition-colors">Login</a>
+                    <a href="/auth/login.php" class="text-gray-600 hover:text-indigo-600 transition-colors">Login</a>
                     <a href="/student/register.php" class="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 transition-all">Register</a>
                 <?php endif; ?>
             </nav>
