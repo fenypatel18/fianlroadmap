@@ -1,34 +1,8 @@
 <?php
-// instructor/dashboard.php
 require_once __DIR__ . '/../auth/middleware.php';
+requireInstructor();
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Full protection for the instructor dashboard
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'instructor') {
-    if(isset($_SESSION['user_id'])) session_destroy();
-    redirect('login.php');
-}
-
-if (isset($_SESSION['first_login']) && $_SESSION['first_login']) {
-    redirect('change_password.php');
-}
-
-// Re-verify `first_login` from DB for added security
-try {
-    require_once __DIR__ . '/../config/db.php';
-    $stmt = $pdo->prepare("SELECT first_login FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
-    if ($user && $user['first_login']) {
-         $_SESSION['first_login'] = true; // Correct the session
-         redirect('change_password.php');
-    }
-} catch (PDOException $e) {
-    die("Database connection error.");
-}
+require_once __DIR__ . '/../config/db.php';
 
 $instructor_name = $_SESSION['name'] ?? 'Instructor';
 
@@ -40,67 +14,109 @@ $instructor_name = $_SESSION['name'] ?? 'Instructor';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instructor Dashboard - SkillPath Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .active-link {
+            background-color: #eef2ff; /* indigo-50 */
+            color: #4f46e5; /* indigo-600 */
+            font-weight: 600;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-50 font-sans">
 
-<div class="flex h-screen">
+<div class="flex">
+
     <!-- Sidebar -->
-    <div class="w-64 bg-gray-800 text-white flex flex-col">
-        <div class="px-8 py-6 border-b border-gray-700">
-            <h2 class="text-2xl font-bold">Instructor Panel</h2>
+    <aside class="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
+        <div class="px-6 py-5 border-b border-gray-200">
+            <h1 class="text-xl font-bold text-indigo-600">SkillPath Builder</h1>
+            <span class="text-xs text-gray-500">Instructor Panel</span>
         </div>
-        <nav class="flex-1 px-4 py-4 space-y-2">
-            <a href="dashboard.php" class="flex items-center px-4 py-2 text-white bg-gray-700 rounded-md">
-                <span>Dashboard</span>
+        <nav class="flex-grow pt-4">
+            <a href="/instructor/dashboard.php" class="flex items-center px-6 py-3 text-gray-700 active-link">
+                <i class="fas fa-tachometer-alt w-6 text-center"></i>
+                <span class="ml-3">Dashboard</span>
             </a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md">
-                <span>Create Roadmap</span>
+            <a href="#" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-plus-circle w-6 text-center"></i>
+                <span class="ml-3">Create Roadmap</span>
             </a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md">
-                <span>My Roadmaps</span>
+            <a href="#" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-road w-6 text-center"></i>
+                <span class="ml-3">My Roadmaps</span>
             </a>
-             <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md">
-                <span>Rejected / Changed Roadmaps</span>
+            <a href="#" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-user-graduate w-6 text-center"></i>
+                <span class="ml-3">Students</span>
             </a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md">
-                <span>Students</span>
-            </a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md">
-                <span>Feedback</span>
+            <a href="#" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-comment-dots w-6 text-center"></i>
+                <span class="ml-3">Feedback</span>
             </a>
         </nav>
-        <div class="px-4 py-4 border-t border-gray-700">
-             <a href="../auth/logout.php" class="flex items-center px-4 py-2 text-gray-300 hover:bg-red-700 rounded-md">
-                <span>Logout</span>
+        <div class="p-4 border-t border-gray-200">
+            <a href="/auth/logout.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-sign-out-alt w-6 text-center"></i>
+                <span class="ml-3">Logout</span>
             </a>
         </div>
-    </div>
+    </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 p-10 overflow-y-auto">
-        <h1 class="text-3xl font-bold text-gray-800">Instructor Dashboard</h1>
-        <p class="mt-2 text-gray-600">Welcome back, <?= htmlspecialchars($instructor_name) ?>!</p>
+    <main class="flex-1 p-8">
+        <h1 class="text-4xl font-bold text-gray-800">Instructor Dashboard</h1>
+        <p class="text-gray-600 mt-2">Welcome back, <?php echo htmlspecialchars($instructor_name); ?>!</p>
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-600">Total Roadmaps Created</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">8</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-lg">
+                        <i class="fas fa-drafting-compass text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Roadmaps Created</h3>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">8</p>
+                    </div>
+                </div>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-600">Approved Roadmaps</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">5</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-lg">
+                        <i class="fas fa-check-double text-green-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Approved Roadmaps</h3>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">5</p>
+                    </div>
+                </div>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-600">Total Students Enrolled</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">256</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Total Students</h3>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">256</p>
+                    </div>
+                </div>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-600">Total Revenue</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">$4,800</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                 <div class="flex items-center">
+                    <div class="p-3 bg-yellow-100 rounded-lg">
+                        <i class="fas fa-dollar-sign text-yellow-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Total Revenue</h3>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">$4,800</p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
+
 </div>
 
 </body>
