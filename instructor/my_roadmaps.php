@@ -1,12 +1,28 @@
 <?php
 // instructor/my_roadmaps.php
+
+// Start the session to access user data
+session_start();
+
+// Include middleware for authentication and authorization
 require_once __DIR__ . '/../auth/middleware.php';
+
+// Ensure the user is an instructor and has completed the initial password change
 requireInstructor();
+if ($_SESSION['first_login'] == 1) {
+    // Redirect to change password page if it's their first login
+    header('Location: /instructor/change_password.php');
+    exit();
+}
+
+// Include the database connection file
 require_once __DIR__ . '/../config/db.php';
 
+// Get the logged-in instructor's ID from the session
 $instructor_id = $_SESSION['user_id'];
 
-// Fetch approved roadmaps and count phases
+// Prepare and execute the SQL query to fetch approved roadmaps for the instructor.
+// A subquery is used to count the total number of phases for each roadmap.
 $stmt = $pdo->prepare("
     SELECT 
         r.id, 
@@ -14,13 +30,13 @@ $stmt = $pdo->prepare("
         r.price, 
         r.status, 
         r.created_at,
-        (SELECT COUNT(*) FROM roadmap_phases WHERE roadmap_id = r.id) as phase_count
+        (SELECT COUNT(*) FROM roadmap_phases WHERE roadmap_id = r.id) as total_phases
     FROM roadmaps r
     WHERE r.instructor_id = ? AND r.status = 'approved'
     ORDER BY r.created_at DESC
 ");
 $stmt->execute([$instructor_id]);
-$roadmaps = $stmt->fetchAll();
+$roadmaps = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -29,71 +45,71 @@ $roadmaps = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Approved Roadmaps</title>
+    <!-- Include Tailwind CSS from CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans">
-<div class="flex h-screen">
-    <!-- Sidebar -->
-    <div class="w-64 bg-gray-800 text-white flex flex-col fixed h-full">
-        <div class="px-8 py-6 border-b border-gray-700">
-            <h2 class="text-2xl font-bold">Instructor Panel</h2>
+    <!-- Instructor Dashboard Layout -->
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white p-4">
+            <h2 class="text-2xl font-bold mb-10">Instructor Panel</h2>
+            <ul>
+                <li><a href="/instructor/dashboard.php" class="block py-2 px-4 rounded hover:bg-gray-700">Dashboard</a></li>
+                <li><a href="/instructor/create_roadmap.php" class="block py-2 px-4 rounded hover:bg-gray-700">Create Roadmap</a></li>
+                <li><a href="/instructor/my_roadmaps.php" class="block py-2 px-4 rounded bg-gray-700">My Roadmaps</a></li>
+                <li><a href="/instructor/rejected_roadmaps.php" class="block py-2 px-4 rounded hover:bg-gray-700">Rejected Roadmaps</a></li>
+                <li><a href="/auth/logout.php" class="block py-2 px-4 rounded hover:bg-red-500">Logout</a></li>
+            </ul>
         </div>
-        <nav class="flex-1 px-4 py-4 space-y-2">
-            <a href="dashboard.php" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md"><span>Dashboard</span></a>
-            <a href="create_roadmap.php" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md"><span>Create Roadmap</span></a>
-            <a href="my_roadmaps.php" class="flex items-center px-4 py-2 text-white bg-gray-700 rounded-md"><span>My Roadmaps</span></a>
-            <a href="rejected_roadmaps.php" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md"><span>Rejected / Changed Roadmaps</span></a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md"><span>Students</span></a>
-            <a href="#" class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-md"><span>Feedback</span></a>
-        </nav>
-        <div class="px-4 py-4 border-t border-gray-700">
-             <a href="../auth/logout.php" class="flex items-center px-4 py-2 text-gray-300 hover:bg-red-700 rounded-md"><span>Logout</span></a>
-        </div>
-    </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 ml-64 p-10 overflow-y-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">My Approved Roadmaps</h1>
-        <div class="bg-white p-8 rounded-lg shadow-md">
-            <?php if (empty($roadmaps)): ?>
-                <p class="text-center text-gray-500">You have no approved roadmaps yet.</p>
-            <?php else: ?>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gray-200">
+        <!-- Main Content -->
+        <div class="flex-1 p-10">
+            <h1 class="text-3xl font-bold mb-6">My Approved Roadmaps</h1>
+
+            <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roadmap Title</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Phases</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php if (empty($roadmaps)): ?>
                             <tr>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                <th class="py-3 px-6 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Phases</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">You have no approved roadmaps yet.</td>
                             </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
+                        <?php else: ?>
                             <?php foreach ($roadmaps as $roadmap): ?>
                                 <tr>
-                                    <td class="py-4 px-6 whitespace-nowrap font-medium text-gray-900"><?= htmlspecialchars($roadmap['title']) ?></td>
-                                    <td class="py-4 px-6 whitespace-nowrap">$<?= htmlspecialchars(number_format($roadmap['price'], 2)) ?></td>
-                                    <td class="py-4 px-6 whitespace-nowrap text-center"><?= htmlspecialchars($roadmap['phase_count']) ?></td>
-                                    <td class="py-4 px-6 whitespace-nowrap">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($roadmap['title']); ?></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">$<?php echo htmlspecialchars(number_format($roadmap['price'], 2)); ?></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($roadmap['total_phases']); ?></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            <?= htmlspecialchars(ucfirst($roadmap['status'])) ?>
+                                            <?php echo htmlspecialchars(ucfirst($roadmap['status'])); ?>
                                         </span>
                                     </td>
-                                    <td class="py-4 px-6 whitespace-nowrap text-gray-500"><?= htmlspecialchars(date('M d, Y', strtotime($roadmap['created_at']))) ?></td>
-                                    <td class="py-4 px-6 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900">View Details</a>
-                                        <a href="#" class="text-gray-600 hover:text-gray-900">Students</a>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <?php echo htmlspecialchars(date('M d, Y', strtotime($roadmap['created_at']))); ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 </body>
 </html>
