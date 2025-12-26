@@ -1,0 +1,243 @@
+
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #50e3c2;
+    --dark-color: #333;
+    --light-color: #f4f4f4;
+}
+
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--dark-color);
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    scroll-behavior: smooth;
+}
+
+#main-header {
+    background: #fff;
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+#main-header nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#main-header .logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+#main-header ul {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0;
+}
+
+#main-header ul li {
+    margin-left: 20px;
+}
+
+#main-header ul a {
+    text-decoration: none;
+    color: var(--dark-color);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+#main-header ul a:hover {
+    color: var(--primary-color);
+}
+
+
+#hero {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(rgba(74, 144, 226, 0.1), rgba(255, 255, 255, 0.1));
+}
+
+.hero-content {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 1s forwards ease-out;
+}
+
+.hero-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+.cta-buttons a {
+    text-decoration: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    font-weight: bold;
+    margin: 0 10px;
+    transition: all 0.3s ease;
+}
+
+.primary-cta {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.primary-cta:hover {
+    background: #3a7ac8;
+}
+
+.secondary-cta {
+    background: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+.secondary-cta:hover {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+
+section {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+h2 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+#features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    background: var(--light-color);
+}
+
+.feature-card {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+#roadmap-preview .roadmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    text-align: left;
+}
+.roadmap-card {
+    background: #fff;
+    border: 1px solid #eee;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+.roadmap-card h3 {
+    color: var(--primary-color);
+}
+.roadmap-card .btn {
+    display: inline-block;
+    margin-top: 1rem;
+    background: var(--primary-color);
+    color: #fff;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+#how-it-works .timeline {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 3rem;
+}
+.step {
+    text-align: center;
+}
+.step span {
+    display: block;
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    color: #fff;
+    margin: 0 auto 1rem;
+    font-weight: bold;
+}
+
+#feedback .feedback-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+.feedback-card {
+    background: var(--light-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+.rating {
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+    margin: 0.5rem 0;
+}
+
+#cta {
+    background: var(--primary-color);
+    color: #fff;
+}
+#cta h2 {
+    color: #fff;
+}
+#cta .secondary-cta {
+    border-color: #fff;
+    color: #fff;
+}
+#cta .secondary-cta:hover {
+    background: #fff;
+    color: var(--primary-color);
+}
+
+footer {
+    background: var(--dark-color);
+    color: #fff;
+    text-align: center;
+    padding: 2rem;
+}
+
+footer a {
+    color: #fff;
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
