@@ -1,67 +1,84 @@
 <?php
 // auth/login.php
-header('Content-Type: application/json');
+session_start();
 require_once __DIR__ . '/../config/db.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+// If a user is already logged in, redirect them to their dashboard
+if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
+    header('Location: /' . $_SESSION['role'] . '/dashboard.php');
     exit();
 }
 
-$data = json_decode(file_get_contents("php://input"));
+// Block direct GET access
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: login_selector.php');
+    exit();
+}
 
-$email = $data->email ?? '';
-$password = $data->password ?? '';
+$email = $_POST['email'] ?? '';
+$password = $_POST['password'] ?? '';
+$role_expected = $_POST['role'] ?? ''; // e.g., 'student', 'admin'
 
-if (empty($email) || empty($password)) {
-    http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'Email and password are required']);
+if (empty($email) || empty($password) || empty($role_expected)) {
+    // Redirect back to the specific login page with an error
+    header('Location: /' . $role_expected . '/login.php?error=empty');
     exit();
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND role = ?");
+    $stmt->execute([$email, $role_expected]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        // Check if user account is active
         if ($user['status'] !== 'active') {
-            http_response_code(403);
-            echo json_encode(['status' => 'error', 'message' => 'Account is disabled.']);
+            header('Location: /' . $role_expected . '/login.php?error=disabled');
             exit();
         }
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        // Regenerate session ID for security
+        session_regenerate_id(true);
 
+        // Store user data in session
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['name'] = $user['name'];
 
+        // Special case for instructor first login
         if ($user['role'] === 'instructor' && $user['first_login']) {
-             echo json_encode([
-                'status' => 'success',
-                'message' => 'Login successful. Password change required.',
-                'change_password' => true
-            ]);
+            header('Location: /instructor/change_password.php');
             exit();
         }
 
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Login successful',
-            'role' => $user['role']
-        ]);
+        // --- ROLE-BASED REDIRECTION ---
+        switch ($user['role']) {
+            case 'admin':
+                header('Location: /admin/dashboard.php');
+                break;
+            case 'instructor':
+                header('Location: /instructor/dashboard.php');
+                break;
+            case 'student':
+                header('Location: /student/dashboard.php');
+                break;
+            default:
+                // Fallback, should not happen
+                header('Location: /index.php');
+                break;
+        }
+        exit();
 
     } else {
-        http_response_code(401);
-        echo json_encode(['status' => 'error', 'message' => 'Invalid credentials']);
+        // Invalid credentials
+        header('Location: /' . $role_expected . '/login.php?error=invalid');
+        exit();
     }
 
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+    // In a real app, log this error instead of showing it.
+    // die("Database error: " . $e->getMessage());
+    header('Location: /' . $role_expected . '/login.php?error=db');
+    exit();
 }
 ?>
