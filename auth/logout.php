@@ -1,27 +1,35 @@
 <?php
 // auth/logout.php
 
+// Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Unset all of the session variables.
-$_SESSION = [];
+// Store logout message in a temporary variable
+$logout_message = "You have been successfully logged out.";
 
-// If it's desired to kill the session, also delete the session cookie.
-// Note: This will destroy the session, and not just the session data!
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000,
-        $params["path"], $params["domain"],
-        $params["secure"], $params["httponly"]
-    );
+// Clear all session variables
+$_SESSION = array();
+
+// Destroy session cookie
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time() - 3600, '/');
 }
 
-// Finally, destroy the session.
+// Destroy the session
 session_destroy();
 
-// Redirect to the landing page after logout.
-header('Location: /index.php');
+// Start a new session to show logout message
+session_start();
+$_SESSION['logout_message'] = $logout_message;
+
+// Clear any other cookies
+if (isset($_COOKIE['remember_me'])) {
+    setcookie('remember_me', '', time() - 3600, '/');
+}
+
+// Redirect to login page
+header('Location: /fianlroadmap/auth/login.php');
 exit();
 ?>

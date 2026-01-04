@@ -5,7 +5,7 @@
 // Best practice: Use environment variables to store sensitive data.
 // Fallback to default values for local development if .env is not used.
 $db_host = getenv('DB_HOST') ?: '127.0.0.1';
-$db_name = getenv('DB_NAME') ?: 'skillpath_builder';
+$db_name = getenv('DB_NAME') ?: 'roadmap';
 $db_user = getenv('DB_USER') ?: 'root';
 $db_pass = getenv('DB_PASS') ?: '';
 $db_charset = 'utf8mb4';

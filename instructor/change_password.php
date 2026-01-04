@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Update session and redirect to dashboard
             $_SESSION['first_login'] = false;
-            redirect('dashboard.php');
+            redirect('/instructor/dashboard.php');
 
         } catch (PDOException $e) {
             $error = 'Database error: Could not update password.';

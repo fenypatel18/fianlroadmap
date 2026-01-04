@@ -1,0 +1,68 @@
+=== 2025-12-28 12:54:00 ===
+POST: Array
+(
+    [title] => fvms 
+    [duration] => 8 week
+    [description] => drjgn
+    [price] => 784
+    [phases] => Array
+        (
+            [0] => Array
+                (
+                    [order] => 1
+                    [title] => qefmk
+                    [videos] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => rfjn
+                                )
+
+                        )
+
+                )
+
+            [1] => Array
+                (
+                    [order] => 2
+                    [title] => efn
+                    [videos] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => rfjn1
+                                )
+
+                        )
+
+                )
+
+        )
+
+)
+
+FILES: Array
+(
+    [phases_0_videos_0_file] => Array
+        (
+            [name] => php 2.mp4
+            [full_path] => php 2.mp4
+            [type] => video/mp4
+            [tmp_name] => E:\xampp\tmp\phpC215.tmp
+            [error] => 0
+            [size] => 1821879
+        )
+
+    [phases_1_videos_0_file] => Array
+        (
+            [name] => php 2.mp4
+            [full_path] => php 2.mp4
+            [type] => video/mp4
+            [tmp_name] => E:\xampp\tmp\phpC235.tmp
+            [error] => 0
+            [size] => 1821879
+        )
+
+)
+
+====================
