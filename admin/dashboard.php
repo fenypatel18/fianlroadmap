@@ -13,7 +13,8 @@ $admin_id = $_SESSION['user_id'];
 $admin_name = $_SESSION['name'];
 
 // Function to fetch a single value from the database
-function fetch_single_value($conn, $sql) {
+function fetch_single_value($sql) {
+    global $conn;
     $result = $conn->query($sql);
     if ($result && $result->num_rows > 0) {
         $row = $result->fetch_assoc();
@@ -24,42 +25,26 @@ function fetch_single_value($conn, $sql) {
 
 // Fetch stats
 try {
-    // Total instructors
-    $total_instructors_sql = "SELECT COUNT(*) FROM users WHERE role = 'instructor'";
-    $total_instructors = fetch_single_value($conn, $total_instructors_sql);
-
-    // Total students
-    $total_students_sql = "SELECT COUNT(*) FROM users WHERE role = 'student'";
-    $total_students = fetch_single_value($conn, $total_students_sql);
-
     // Total roadmaps
     $total_roadmaps_sql = "SELECT COUNT(*) FROM roadmaps";
-    $total_roadmaps = fetch_single_value($conn, $total_roadmaps_sql);
-    
-    // Total revenue
-    $total_revenue_sql = "SELECT SUM(amount) FROM payments";
-    $total_revenue = fetch_single_value($conn, $total_revenue_sql);
+    $total_roadmaps = fetch_single_value($total_roadmaps_sql);
 
     // Pending roadmaps for approval
     $pending_roadmaps_sql = "SELECT COUNT(*) FROM roadmaps WHERE status = 'pending'";
-    $pending_roadmaps = fetch_single_value($conn, $pending_roadmaps_sql);
+    $pending_roadmaps = fetch_single_value($pending_roadmaps_sql);
 
     // Total certificates issued
     $total_certificates_sql = "SELECT COUNT(*) FROM certificates";
-    $total_certificates = fetch_single_value($conn, $total_certificates_sql);
+    $total_certificates = fetch_single_value($total_certificates_sql);
 
     // Recent feedback count (last 7 days)
     $recent_feedback_sql = "SELECT COUNT(*) FROM feedback WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-    $recent_feedback = fetch_single_value($conn, $recent_feedback_sql);
+    $recent_feedback = fetch_single_value($recent_feedback_sql);
 
 } catch (Exception $e) {
     // Handle potential database errors gracefully
-    // For a real application, you might log this error
     $error_message = "Error fetching dashboard data: " . $e->getMessage();
-    $total_instructors = 0;
-    $total_students = 0;
     $total_roadmaps = 0;
-    $total_revenue = 0;
     $pending_roadmaps = 0;
     $total_certificates = 0;
     $recent_feedback = 0;
@@ -74,7 +59,6 @@ try {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
-        /* Fixed Sidebar Styles */
         .fixed-sidebar {
             position: fixed;
             top: 0;
@@ -87,136 +71,72 @@ try {
             display: flex;
             flex-direction: column;
         }
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-        }
-        .main-content {
-            margin-left: 16rem; /* Same as sidebar width */
-            padding-top: 4rem; /* Adjust for fixed header if you have one */
-        }
+        .sidebar-content { flex: 1; overflow-y: auto; }
+        .main-content { margin-left: 16rem; }
     </style>
 </head>
 <body class="bg-gray-50">
 
-    <!-- Fixed Sidebar -->
     <aside class="fixed-sidebar">
-        <!-- Logo -->
         <div class="p-6">
             <a href="dashboard.php" class="text-2xl font-bold text-gray-800">OneRoadmap</a>
         </div>
-        
-        <!-- Navigation Links -->
         <div class="sidebar-content px-4">
             <nav class="flex flex-col space-y-2">
-                <a href="dashboard.php" class="flex items-center w-full px-4 py-3 text-white bg-indigo-600 rounded-lg">
-                    <i class="fas fa-tachometer-alt w-6 text-center"></i>
-                    <span class="ml-3">Dashboard</span>
-                </a>
-                <a href="roadmaps.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-road w-6 text-center"></i>
-                    <span class="ml-3">Roadmaps</span>
-                </a>
-                <a href="instructors.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-chalkboard-teacher w-6 text-center"></i>
-                    <span class="ml-3">Instructors</span>
-                </a>
-                <a href="students.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-user-graduate w-6 text-center"></i>
-                    <span class="ml-3">Students</span>
-                </a>
-                <a href="feedback.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-comment-dots w-6 text-center"></i>
-                    <span class="ml-3">Feedback</span>
-                </a>
-                <a href="certificates.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-certificate w-6 text-center"></i>
-                    <span class="ml-3">Certificates</span>
-                </a>
+                <a href="dashboard.php" class="flex items-center w-full px-4 py-3 text-white bg-indigo-600 rounded-lg"><i class="fas fa-tachometer-alt w-6 text-center"></i><span class="ml-3">Dashboard</span></a>
+                <a href="roadmaps.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-road w-6 text-center"></i><span class="ml-3">Roadmaps</span></a>
+                <a href="instructors.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-chalkboard-teacher w-6 text-center"></i><span class="ml-3">Instructors</span></a>
+                <a href="students.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-user-graduate w-6 text-center"></i><span class="ml-3">Students</span></a>
+                <a href="feedback.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-comment-dots w-6 text-center"></i><span class="ml-3">Feedback</span></a>
+                <a href="certificates.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-certificate w-6 text-center"></i><span class="ml-3">Certificates</span></a>
             </nav>
         </div>
-        
-        <!-- Fixed Footer with Logout -->
         <div class="sidebar-footer p-4">
-            <div class="mb-3 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded">
-                <p class="font-medium"><?php echo htmlspecialchars($admin_name); ?></p>
-                <p class="text-xs text-gray-500">Administrator</p>
-            </div>
-            <a href="../auth/logout.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg hover:text-red-600">
-                <i class="fas fa-sign-out-alt w-6 text-center"></i>
-                <span class="ml-3">Logout</span>
-            </a>
+            <div class="mb-3 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded"><p class="font-medium"><?php echo htmlspecialchars($admin_name); ?></p><p class="text-xs text-gray-500">Administrator</p></div>
+            <a href="../auth/logout.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg hover:text-red-600"><i class="fas fa-sign-out-alt w-6 text-center"></i><span class="ml-3">Logout</span></a>
         </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content p-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-8">Admin Dashboard</h1>
-
-        <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            <!-- Pending Roadmaps -->
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Pending Approvals</p>
                     <p class="text-3xl font-bold text-gray-800"><?php echo $pending_roadmaps; ?></p>
                 </div>
-                <div class="bg-yellow-100 text-yellow-600 rounded-full p-3">
-                    <i class="fas fa-hourglass-half fa-lg"></i>
-                </div>
+                <div class="bg-yellow-100 text-yellow-600 rounded-full p-3"><i class="fas fa-hourglass-half fa-lg"></i></div>
             </div>
-
-            <!-- Total Roadmaps -->
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Total Roadmaps</p>
                     <p class="text-3xl font-bold text-gray-800"><?php echo $total_roadmaps; ?></p>
                 </div>
-                <div class="bg-purple-100 text-purple-600 rounded-full p-3">
-                    <i class="fas fa-road fa-lg"></i>
-                </div>
+                <div class="bg-purple-100 text-purple-600 rounded-full p-3"><i class="fas fa-road fa-lg"></i></div>
             </div>
-
-            <!-- Total Certificates Issued -->
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Certificates Issued</p>
                     <p class="text-3xl font-bold text-gray-800"><?php echo $total_certificates; ?></p>
                 </div>
-                <div class="bg-blue-100 text-blue-600 rounded-full p-3">
-                    <i class="fas fa-certificate fa-lg"></i>
-                </div>
+                <div class="bg-blue-100 text-blue-600 rounded-full p-3"><i class="fas fa-certificate fa-lg"></i></div>
             </div>
-
-            <!-- Recent Feedback -->
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Recent Feedback (7d)</p>
                     <p class="text-3xl font-bold text-gray-800"><?php echo $recent_feedback; ?></p>
                 </div>
-                <div class="bg-pink-100 text-pink-600 rounded-full p-3">
-                    <i class="fas fa-comment-dots fa-lg"></i>
-                </div>
+                <div class="bg-pink-100 text-pink-600 rounded-full p-3"><i class="fas fa-comment-dots fa-lg"></i></div>
             </div>
         </div>
-
-        <!-- Placeholder for recent activity or charts -->
         <div class="mt-12 bg-white p-8 rounded-lg shadow-md">
             <h2 class="text-xl font-bold text-gray-700 mb-4">System Overview</h2>
-            <p class="text-gray-600">
-                Welcome to the OneRoadmap administration panel. From here, you can manage all aspects of the platform.
-                Use the sidebar to navigate between managing roadmaps, users, and viewing feedback.
-            </p>
+            <p class="text-gray-600">Welcome to the OneRoadmap administration panel. From here, you can manage all aspects of the platform. Use the sidebar to navigate between managing roadmaps, users, and viewing feedback.</p>
             <div class="mt-6 border-t pt-6">
                 <h3 class="text-lg font-semibold text-gray-700">Quick Actions</h3>
                 <div class="mt-4 flex space-x-4">
-                    <a href="roadmaps.php" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                        Manage Roadmaps
-                    </a>
-                    <a href="instructors.php" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                        View Instructors
-                    </a>
+                    <a href="roadmaps.php" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Manage Roadmaps</a>
+                    <a href="instructors.php" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">View Instructors</a>
                 </div>
             </div>
         </div>
