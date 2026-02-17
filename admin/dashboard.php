@@ -13,8 +13,7 @@ $admin_id = $_SESSION['user_id'];
 $admin_name = $_SESSION['name'];
 
 // Function to fetch a single value from the database
-function fetch_single_value($sql) {
-    global $conn;
+function fetch_single_value($conn, $sql) {
     $result = $conn->query($sql);
     if ($result && $result->num_rows > 0) {
         $row = $result->fetch_assoc();
@@ -27,19 +26,19 @@ function fetch_single_value($sql) {
 try {
     // Total roadmaps
     $total_roadmaps_sql = "SELECT COUNT(*) FROM roadmaps";
-    $total_roadmaps = fetch_single_value($total_roadmaps_sql);
+    $total_roadmaps = fetch_single_value($conn, $total_roadmaps_sql);
 
     // Pending roadmaps for approval
     $pending_roadmaps_sql = "SELECT COUNT(*) FROM roadmaps WHERE status = 'pending'";
-    $pending_roadmaps = fetch_single_value($pending_roadmaps_sql);
+    $pending_roadmaps = fetch_single_value($conn, $pending_roadmaps_sql);
 
     // Total certificates issued
     $total_certificates_sql = "SELECT COUNT(*) FROM certificates";
-    $total_certificates = fetch_single_value($total_certificates_sql);
+    $total_certificates = fetch_single_value($conn, $total_certificates_sql);
 
     // Recent feedback count (last 7 days)
     $recent_feedback_sql = "SELECT COUNT(*) FROM feedback WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-    $recent_feedback = fetch_single_value($recent_feedback_sql);
+    $recent_feedback = fetch_single_value($conn, $recent_feedback_sql);
 
 } catch (Exception $e) {
     // Handle potential database errors gracefully
