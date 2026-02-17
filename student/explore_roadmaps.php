@@ -11,9 +11,6 @@ $student_id = $_SESSION['user_id'];
 $student_name = $_SESSION['name'];
 $BASE_PATH = '/fianlroadmap';
 
-// Define uploads directory
-$UPLOADS_DIR = $_SERVER['DOCUMENT_ROOT'] . $BASE_PATH . '/uploads/profile_pictures/';
-
 // --- FETCH STUDENT PROFILE DATA ---
 $stmt = $pdo->prepare("SELECT id, name, email, profile_picture FROM users WHERE id = ?");
 $stmt->execute([$student_id]);
@@ -26,36 +23,45 @@ $enrolledRoadmaps = [];
 $recommendedRoadmaps = [];
 
 try {
-    // Fetch all approved roadmaps
+    // Fetch all approved roadmaps with proper counts
     $stmt = $pdo->prepare("
-        SELECT r.*, u.name as instructor_name, 
-               COUNT(rp.id) as phase_count,
-               COUNT(DISTINCT e.id) as enrollment_count,
-               AVG(f.rating) as avg_rating
+        SELECT 
+            r.*, 
+            u.name as instructor_name,
+            COALESCE(phase_counts.phase_count, 0) as phase_count,
+            COALESCE(enrollment_counts.enrollment_count, 0) as enrollment_count,
+            COALESCE(avg_ratings.avg_rating, 0) as avg_rating
         FROM roadmaps r 
         JOIN users u ON r.instructor_id = u.id 
-        LEFT JOIN roadmap_phases rp ON r.id = rp.roadmap_id
-        LEFT JOIN enrollments e ON r.id = e.roadmap_id
-        LEFT JOIN feedback f ON r.id = f.roadmap_id
+        LEFT JOIN (
+            SELECT roadmap_id, COUNT(*) as phase_count 
+            FROM roadmap_phases 
+            GROUP BY roadmap_id
+        ) as phase_counts ON r.id = phase_counts.roadmap_id
+        LEFT JOIN (
+            SELECT roadmap_id, COUNT(*) as enrollment_count 
+            FROM enrollments 
+            GROUP BY roadmap_id
+        ) as enrollment_counts ON r.id = enrollment_counts.roadmap_id
+        LEFT JOIN (
+            SELECT roadmap_id, AVG(rating) as avg_rating 
+            FROM feedback 
+            GROUP BY roadmap_id
+        ) as avg_ratings ON r.id = avg_ratings.roadmap_id
         WHERE r.status = 'approved'
-        GROUP BY r.id
-        ORDER BY enrollment_count DESC, r.created_at DESC
+        ORDER BY enrollment_counts.enrollment_count DESC, r.created_at DESC
     ");
     $stmt->execute();
     $allRoadmaps = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get user's enrolled roadmaps
+    // Get user's enrolled roadmap IDs
     $enrolledStmt = $pdo->prepare("
-        SELECT r.*, u.name as instructor_name FROM roadmaps r
-        JOIN enrollments e ON r.id = e.roadmap_id
-        JOIN users u ON r.instructor_id = u.id
-        WHERE e.student_id = ? AND r.status = 'approved'
+        SELECT roadmap_id 
+        FROM enrollments 
+        WHERE student_id = ?
     ");
     $enrolledStmt->execute([$student_id]);
-    $enrolledRoadmaps = $enrolledStmt->fetchAll();
-    
-    // Get enrolled roadmap IDs
-    $enrolledIds = array_column($enrolledRoadmaps, 'id');
+    $enrolledIds = $enrolledStmt->fetchAll(PDO::FETCH_COLUMN, 0);
     
     // Separate available and enrolled roadmaps
     foreach ($allRoadmaps as $roadmap) {
@@ -66,42 +72,59 @@ try {
         }
     }
     
-    // Remove duplicates from enrolled roadmaps
-    $enrolledRoadmaps = array_unique($enrolledRoadmaps, SORT_REGULAR);
-    
     // Get recommended roadmaps (based on similar enrollments)
     if (!empty($enrolledIds)) {
+        $placeholders = str_repeat('?,', count($enrolledIds) - 1) . '?';
         $recommendedStmt = $pdo->prepare("
             SELECT DISTINCT r.*, u.name as instructor_name,
-                   COUNT(e2.id) as similar_enrollments
+                   COALESCE(phase_counts.phase_count, 0) as phase_count,
+                   COALESCE(enrollment_counts.enrollment_count, 0) as enrollment_count,
+                   COALESCE(avg_ratings.avg_rating, 0) as avg_rating,
+                   COUNT(DISTINCT e2.student_id) as similar_enrollments
             FROM roadmaps r
             JOIN users u ON r.instructor_id = u.id
+            LEFT JOIN (
+                SELECT roadmap_id, COUNT(*) as phase_count 
+                FROM roadmap_phases 
+                GROUP BY roadmap_id
+            ) as phase_counts ON r.id = phase_counts.roadmap_id
+            LEFT JOIN (
+                SELECT roadmap_id, COUNT(*) as enrollment_count 
+                FROM enrollments 
+                GROUP BY roadmap_id
+            ) as enrollment_counts ON r.id = enrollment_counts.roadmap_id
+            LEFT JOIN (
+                SELECT roadmap_id, AVG(rating) as avg_rating 
+                FROM feedback 
+                GROUP BY roadmap_id
+            ) as avg_ratings ON r.id = avg_ratings.roadmap_id
             JOIN enrollments e1 ON r.id = e1.roadmap_id
             JOIN enrollments e2 ON e1.student_id = e2.student_id
-            WHERE e2.roadmap_id IN (" . implode(',', $enrolledIds) . ")
-            AND r.id NOT IN (" . implode(',', $enrolledIds) . ")
+            WHERE e2.roadmap_id IN ($placeholders)
+            AND r.id NOT IN ($placeholders)
             AND r.status = 'approved'
             GROUP BY r.id
             ORDER BY similar_enrollments DESC
             LIMIT 3
         ");
-        $recommendedStmt->execute();
+        
+        // Bind parameters twice (for both IN clauses)
+        $params = array_merge($enrolledIds, $enrolledIds);
+        $recommendedStmt->execute($params);
         $recommendedRoadmaps = $recommendedStmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
-    // Count statistics
+    // Count statistics - FIXED QUERY
     $statsStmt = $pdo->prepare("
         SELECT 
-            COUNT(DISTINCT r.id) as total_roadmaps,
-            COUNT(DISTINCT rv.id) as total_videos,
-            COUNT(DISTINCT e.id) as total_enrollments,
-            COUNT(DISTINCT u.id) as total_students
-        FROM roadmaps r
-        LEFT JOIN roadmap_phases rp ON r.id = rp.roadmap_id
-        LEFT JOIN roadmap_videos rv ON rp.id = rv.phase_id
-        LEFT JOIN enrollments e ON r.id = e.roadmap_id
-        LEFT JOIN users u ON e.student_id = u.id AND u.role = 'student'
-        WHERE r.status = 'approved'
+            (SELECT COUNT(*) FROM roadmaps WHERE status = 'approved') as total_roadmaps,
+            (SELECT COUNT(DISTINCT rv.id) 
+             FROM roadmap_videos rv
+             JOIN roadmap_phases rp ON rv.phase_id = rp.id
+             JOIN roadmaps r ON rp.roadmap_id = r.id
+             WHERE r.status = 'approved') as total_videos,
+            (SELECT COUNT(*) FROM enrollments) as total_enrollments,
+            (SELECT COUNT(DISTINCT student_id) FROM enrollments) as total_students
     ");
     $statsStmt->execute();
     $stats = $statsStmt->fetch();
@@ -164,28 +187,6 @@ function getRoadmapIcon($title) {
     }
     
     return 'book-open';
-}
-
-// Function to get category based on title
-function getRoadmapCategory($title) {
-    $titleLower = strtolower($title);
-    
-    $skillKeywords = ['javascript', 'typescript', 'react', 'node', 'python', 'java', 'css', 'sql', 'php', 'html', 'mongodb', 'docker', 'git'];
-    $roleKeywords = ['data', 'analyst', 'ai', 'frontend', 'backend', 'full stack', 'devops', 'mobile', 'web', 'design', 'product', 'ux', 'ui'];
-    
-    foreach ($skillKeywords as $keyword) {
-        if (strpos($titleLower, $keyword) !== false) {
-            return 'skill';
-        }
-    }
-    
-    foreach ($roleKeywords as $keyword) {
-        if (strpos($titleLower, $keyword) !== false) {
-            return 'role';
-        }
-    }
-    
-    return 'general';
 }
 ?>
 
@@ -497,6 +498,17 @@ function getRoadmapCategory($title) {
             overflow: hidden;
         }
         
+        /* Search match styling */
+        .search-match {
+            animation: highlight 1s ease;
+        }
+        
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(124, 58, 237, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+        }
+        
         /* Lucide icon styles */
         .lucide {
             width: 1em;
@@ -758,7 +770,7 @@ function getRoadmapCategory($title) {
                                         <i data-lucide="layers" class="lucide mr-1"></i>
                                         <span><?php echo $roadmap['phase_count']; ?> modules</span>
                                     </div>
-                                    <?php if($roadmap['avg_rating']): ?>
+                                    <?php if($roadmap['avg_rating'] > 0): ?>
                                     <div class="flex items-center">
                                         <i data-lucide="star" class="lucide text-yellow-500 mr-1"></i>
                                         <span><?php echo number_format($roadmap['avg_rating'], 1); ?></span>
@@ -824,7 +836,7 @@ function getRoadmapCategory($title) {
                                 <div class="flex items-center space-x-4 text-gray-400">
                                     <div class="flex items-center">
                                         <i data-lucide="users" class="lucide mr-1"></i>
-                                        <span><?php echo $roadmap['enrollment_count'] ?? 0; ?> enrolled</span>
+                                        <span><?php echo $roadmap['enrollment_count']; ?> enrolled</span>
                                     </div>
                                     <div class="flex items-center">
                                         <i data-lucide="clock" class="lucide mr-1"></i>
@@ -886,7 +898,7 @@ function getRoadmapCategory($title) {
                                         <p class="text-xs text-gray-400">By <?php echo htmlspecialchars($roadmap['instructor_name']); ?></p>
                                     </div>
                                 </div>
-                                <?php if(isset($roadmap['avg_rating']) && $roadmap['avg_rating'] >= 4.5): ?>
+                                <?php if($roadmap['avg_rating'] >= 4.5): ?>
                                 <span class="badge badge-featured">
                                     <i data-lucide="crown" class="lucide mr-1"></i>
                                     Top Rated
@@ -909,7 +921,7 @@ function getRoadmapCategory($title) {
                                         <span><?php echo $roadmap['enrollment_count']; ?> enrolled</span>
                                     </div>
                                 </div>
-                                <?php if(isset($roadmap['avg_rating']) && $roadmap['avg_rating']): ?>
+                                <?php if($roadmap['avg_rating'] > 0): ?>
                                 <div class="flex items-center text-yellow-500">
                                     <i data-lucide="star" class="lucide mr-1"></i>
                                     <span><?php echo number_format($roadmap['avg_rating'], 1); ?></span>

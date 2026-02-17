@@ -1,0 +1,173 @@
+{
+    "14": {
+        "questions": [
+            {
+                "question": "Which data type is most commonly analyzed in data analytics?",
+                "options": {
+                    "a": "Coffee consumption",
+                    "b": "Lunch time",
+                    "c": "Accuracy rate",
+                    "d": "Sleep hours"
+                },
+                "correct_answer": "c",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is a key metric in data analytics?",
+                "options": {
+                    "a": "Elvish",
+                    "b": "Klingon",
+                    "c": "Ancient Greek",
+                    "d": "R programming"
+                },
+                "correct_answer": "d",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which approach is used in modern data analytics?",
+                "options": {
+                    "a": "Coin flipping",
+                    "b": "Story telling",
+                    "c": "Regression analysis",
+                    "d": "Magic tricks"
+                },
+                "correct_answer": "c",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is the primary purpose of data analytics?",
+                "options": {
+                    "a": "Better decision making",
+                    "b": "Wasted time",
+                    "c": "Random actions",
+                    "d": "Confusion"
+                },
+                "correct_answer": "a",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is a common challenge in data analytics?",
+                "options": {
+                    "a": "Fictional stories",
+                    "b": "Personal opinions",
+                    "c": "Random numbers",
+                    "d": "Structured data"
+                },
+                "correct_answer": "d",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which visualization is best for data analytics?",
+                "options": {
+                    "a": "Fast internet",
+                    "b": "Too much coffee",
+                    "c": "Data quality issues",
+                    "d": "Nice weather"
+                },
+                "correct_answer": "c",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which programming language is popular for data analytics?",
+                "options": {
+                    "a": "Python with pandas",
+                    "b": "Photo editor",
+                    "c": "Video game",
+                    "d": "Word processor"
+                },
+                "correct_answer": "a",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What statistical method is used in data analytics?",
+                "options": {
+                    "a": "Ignoring",
+                    "b": "Memorization",
+                    "c": "Critical thinking",
+                    "d": "Guessing"
+                },
+                "correct_answer": "c",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is the output of data analytics analysis?",
+                "options": {
+                    "a": "Actionable insights",
+                    "b": "Fairy tales",
+                    "c": "Random thoughts",
+                    "d": "Jokes"
+                },
+                "correct_answer": "a",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is the first step in data analytics process?",
+                "options": {
+                    "a": "Skip validation",
+                    "b": "Identify patterns",
+                    "c": "Ignore outliers",
+                    "d": "Make assumptions"
+                },
+                "correct_answer": "b",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What is a key technique in data analytics?",
+                "options": {
+                    "a": "Systematic data analysis",
+                    "b": "Random sampling",
+                    "c": "Guessing",
+                    "d": "Intuition"
+                },
+                "correct_answer": "a",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "What does data analytics help businesses achieve?",
+                "options": {
+                    "a": "Music for spreadsheets",
+                    "b": "Paintings for databases",
+                    "c": "Poetry for numbers",
+                    "d": "Line charts for trends"
+                },
+                "correct_answer": "d",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which skill is essential for data analytics?",
+                "options": {
+                    "a": "Copying others",
+                    "b": "Making informed decisions",
+                    "c": "Guessing randomly",
+                    "d": "Ignoring data"
+                },
+                "correct_answer": "b",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which of these is NOT a part of data analytics?",
+                "options": {
+                    "a": "Fortune cookies",
+                    "b": "Crystal balls",
+                    "c": "Magic wands",
+                    "d": "Machine learning"
+                },
+                "correct_answer": "d",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            },
+            {
+                "question": "Which tool is commonly used in data analytics?",
+                "options": {
+                    "a": "Data guessing",
+                    "b": "Data copying",
+                    "c": "Data ignoring",
+                    "d": "Data cleaning"
+                },
+                "correct_answer": "d",
+                "explanation": "This is correct because it represents a fundamental aspect of data analytics."
+            }
+        ],
+        "timestamp": 1767634174,
+        "roadmap_title": "Roadmap 14"
+    }
+}

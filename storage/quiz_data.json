@@ -1,0 +1,348 @@
+{
+    "quiz_14_9_1771305542": {
+        "questions": [
+            {
+                "question": "What characterizes effective statistical methods in data analytics?",
+                "options": {
+                    "a": "Combining quantitative analysis with qualitative insights",
+                    "b": "Relying solely on numerical data",
+                    "c": "Using only anecdotal evidence",
+                    "d": "Making decisions without any data"
+                },
+                "correct_answer": "a",
+                "explanation": "Integrated approaches provide comprehensive understanding."
+            },
+            {
+                "question": "Which data visualization approach yields the most reliable results in data analytics?",
+                "options": {
+                    "a": "Evidence-based decision making with validation",
+                    "b": "Following trends without verification",
+                    "c": "Relying on assumptions and intuition",
+                    "d": "Copying others without adaptation"
+                },
+                "correct_answer": "a",
+                "explanation": "Evidence ensures decisions are grounded in reality."
+            },
+            {
+                "question": "How has predictive modeling technology influenced data analytics practices?",
+                "options": {
+                    "a": "Proactive risk identification and mitigation",
+                    "b": "Ignoring potential problems until they occur",
+                    "c": "Being overly cautious without action",
+                    "d": "Taking unnecessary risks"
+                },
+                "correct_answer": "a",
+                "explanation": "Proactive risk management prevents major issues."
+            },
+            {
+                "question": "Which skill is considered most critical for professionals specializing in data analytics?",
+                "options": {
+                    "a": "Measurable outcomes with clear success criteria",
+                    "b": "Vague objectives without metrics",
+                    "c": "Focusing only on activity, not results",
+                    "d": "Avoiding performance measurement"
+                },
+                "correct_answer": "a",
+                "explanation": "Measurable criteria enable progress tracking and evaluation."
+            },
+            {
+                "question": "What is the first step in a standard data analytics workflow?",
+                "options": {
+                    "a": "Integration with existing systems and processes",
+                    "b": "Creating isolated solutions",
+                    "c": "Replacing everything without consideration",
+                    "d": "Ignoring compatibility requirements"
+                },
+                "correct_answer": "a",
+                "explanation": "Integration maximizes efficiency and adoption."
+            },
+            {
+                "question": "How does effective data analytics contribute to organizational decision-making?",
+                "options": {
+                    "a": "Cost-benefit analysis and resource optimization",
+                    "b": "Spending without budget consideration",
+                    "c": "Being overly frugal at expense of quality",
+                    "d": "Ignoring financial implications"
+                },
+                "correct_answer": "a",
+                "explanation": "Financial prudence ensures sustainable implementation."
+            },
+            {
+                "question": "What is the most common challenge faced during data analytics implementation?",
+                "options": {
+                    "a": "Applying systematic methodologies with clear objectives",
+                    "b": "Relying on intuitive approaches without structure",
+                    "c": "Focusing only on theoretical concepts",
+                    "d": "Avoiding established frameworks and guidelines"
+                },
+                "correct_answer": "a",
+                "explanation": "Systematic approaches ensure consistency and measurable outcomes."
+            },
+            {
+                "question": "Which factor most significantly impacts the quality of data analytics outcomes?",
+                "options": {
+                    "a": "Continuous iteration based on feedback and results",
+                    "b": "Sticking rigidly to initial plans",
+                    "c": "Frequently changing direction without reason",
+                    "d": "Avoiding any adjustments during implementation"
+                },
+                "correct_answer": "a",
+                "explanation": "Iterative improvement leads to optimal outcomes."
+            },
+            {
+                "question": "How does data analytics differ from traditional approaches in the same field?",
+                "options": {
+                    "a": "Strategic alignment with organizational goals",
+                    "b": "Pursuing activities without clear purpose",
+                    "c": "Focusing only on technical excellence",
+                    "d": "Ignoring business context"
+                },
+                "correct_answer": "a",
+                "explanation": "Alignment ensures activities create business value."
+            },
+            {
+                "question": "What emerging trend is shaping the future of data analytics?",
+                "options": {
+                    "a": "Collaborative approaches involving stakeholders",
+                    "b": "Working in isolation from others",
+                    "c": "Making decisions unilaterally",
+                    "d": "Avoiding input from experts"
+                },
+                "correct_answer": "a",
+                "explanation": "Collaboration ensures diverse perspectives and buy-in."
+            },
+            {
+                "question": "Which metric is most appropriate for measuring data analytics success?",
+                "options": {
+                    "a": "Adaptive methodologies that respond to change",
+                    "b": "Rigid processes that resist modification",
+                    "c": "Constantly changing without reason",
+                    "d": "Avoiding any process structure"
+                },
+                "correct_answer": "a",
+                "explanation": "Adaptability ensures relevance in changing environments."
+            },
+            {
+                "question": "What ethical consideration is paramount in data analytics practices?",
+                "options": {
+                    "a": "Scalable solutions that accommodate growth",
+                    "b": "Designing only for current needs",
+                    "c": "Over-engineering without justification",
+                    "d": "Avoiding future planning"
+                },
+                "correct_answer": "a",
+                "explanation": "Scalability ensures long-term viability."
+            },
+            {
+                "question": "How does data analytics integrate with other business functions?",
+                "options": {
+                    "a": "Continuous learning and skill development",
+                    "b": "Relying only on existing knowledge",
+                    "c": "Learning without application",
+                    "d": "Avoiding professional development"
+                },
+                "correct_answer": "a",
+                "explanation": "Continuous learning maintains relevance and expertise."
+            },
+            {
+                "question": "What risk is most commonly associated with data analytics projects?",
+                "options": {
+                    "a": "Understanding core principles before implementation",
+                    "b": "Jumping directly to advanced techniques",
+                    "c": "Memorizing procedures without comprehension",
+                    "d": "Ignoring foundational knowledge"
+                },
+                "correct_answer": "a",
+                "explanation": "Solid understanding of fundamentals enables effective application."
+            },
+            {
+                "question": "Which practice significantly improves efficiency in data analytics?",
+                "options": {
+                    "a": "Clear documentation and knowledge sharing",
+                    "b": "Keeping information within small teams",
+                    "c": "Relying on verbal communication only",
+                    "d": "Avoiding written records"
+                },
+                "correct_answer": "a",
+                "explanation": "Documentation ensures consistency and facilitates collaboration."
+            }
+        ],
+        "roadmap_id": 14,
+        "student_id": 9,
+        "created_at": 1771305542,
+        "expires_at": 1771309142
+    },
+    "quiz_14_9_1771305641": {
+        "questions": [
+            {
+                "question": "What characterizes effective statistical methods in data analytics?",
+                "options": {
+                    "a": "Combining quantitative analysis with qualitative insights",
+                    "b": "Relying solely on numerical data",
+                    "c": "Using only anecdotal evidence",
+                    "d": "Making decisions without any data"
+                },
+                "correct_answer": "a",
+                "explanation": "Integrated approaches provide comprehensive understanding."
+            },
+            {
+                "question": "Which data visualization approach yields the most reliable results in data analytics?",
+                "options": {
+                    "a": "Evidence-based decision making with validation",
+                    "b": "Following trends without verification",
+                    "c": "Relying on assumptions and intuition",
+                    "d": "Copying others without adaptation"
+                },
+                "correct_answer": "a",
+                "explanation": "Evidence ensures decisions are grounded in reality."
+            },
+            {
+                "question": "How has predictive modeling technology influenced data analytics practices?",
+                "options": {
+                    "a": "Proactive risk identification and mitigation",
+                    "b": "Ignoring potential problems until they occur",
+                    "c": "Being overly cautious without action",
+                    "d": "Taking unnecessary risks"
+                },
+                "correct_answer": "a",
+                "explanation": "Proactive risk management prevents major issues."
+            },
+            {
+                "question": "Which skill is considered most critical for professionals specializing in data analytics?",
+                "options": {
+                    "a": "Measurable outcomes with clear success criteria",
+                    "b": "Vague objectives without metrics",
+                    "c": "Focusing only on activity, not results",
+                    "d": "Avoiding performance measurement"
+                },
+                "correct_answer": "a",
+                "explanation": "Measurable criteria enable progress tracking and evaluation."
+            },
+            {
+                "question": "What is the first step in a standard data analytics workflow?",
+                "options": {
+                    "a": "Integration with existing systems and processes",
+                    "b": "Creating isolated solutions",
+                    "c": "Replacing everything without consideration",
+                    "d": "Ignoring compatibility requirements"
+                },
+                "correct_answer": "a",
+                "explanation": "Integration maximizes efficiency and adoption."
+            },
+            {
+                "question": "How does effective data analytics contribute to organizational decision-making?",
+                "options": {
+                    "a": "Cost-benefit analysis and resource optimization",
+                    "b": "Spending without budget consideration",
+                    "c": "Being overly frugal at expense of quality",
+                    "d": "Ignoring financial implications"
+                },
+                "correct_answer": "a",
+                "explanation": "Financial prudence ensures sustainable implementation."
+            },
+            {
+                "question": "What is the most common challenge faced during data analytics implementation?",
+                "options": {
+                    "a": "Applying systematic methodologies with clear objectives",
+                    "b": "Relying on intuitive approaches without structure",
+                    "c": "Focusing only on theoretical concepts",
+                    "d": "Avoiding established frameworks and guidelines"
+                },
+                "correct_answer": "a",
+                "explanation": "Systematic approaches ensure consistency and measurable outcomes."
+            },
+            {
+                "question": "Which factor most significantly impacts the quality of data analytics outcomes?",
+                "options": {
+                    "a": "Continuous iteration based on feedback and results",
+                    "b": "Sticking rigidly to initial plans",
+                    "c": "Frequently changing direction without reason",
+                    "d": "Avoiding any adjustments during implementation"
+                },
+                "correct_answer": "a",
+                "explanation": "Iterative improvement leads to optimal outcomes."
+            },
+            {
+                "question": "How does data analytics differ from traditional approaches in the same field?",
+                "options": {
+                    "a": "Strategic alignment with organizational goals",
+                    "b": "Pursuing activities without clear purpose",
+                    "c": "Focusing only on technical excellence",
+                    "d": "Ignoring business context"
+                },
+                "correct_answer": "a",
+                "explanation": "Alignment ensures activities create business value."
+            },
+            {
+                "question": "What emerging trend is shaping the future of data analytics?",
+                "options": {
+                    "a": "Collaborative approaches involving stakeholders",
+                    "b": "Working in isolation from others",
+                    "c": "Making decisions unilaterally",
+                    "d": "Avoiding input from experts"
+                },
+                "correct_answer": "a",
+                "explanation": "Collaboration ensures diverse perspectives and buy-in."
+            },
+            {
+                "question": "Which metric is most appropriate for measuring data analytics success?",
+                "options": {
+                    "a": "Adaptive methodologies that respond to change",
+                    "b": "Rigid processes that resist modification",
+                    "c": "Constantly changing without reason",
+                    "d": "Avoiding any process structure"
+                },
+                "correct_answer": "a",
+                "explanation": "Adaptability ensures relevance in changing environments."
+            },
+            {
+                "question": "What ethical consideration is paramount in data analytics practices?",
+                "options": {
+                    "a": "Scalable solutions that accommodate growth",
+                    "b": "Designing only for current needs",
+                    "c": "Over-engineering without justification",
+                    "d": "Avoiding future planning"
+                },
+                "correct_answer": "a",
+                "explanation": "Scalability ensures long-term viability."
+            },
+            {
+                "question": "How does data analytics integrate with other business functions?",
+                "options": {
+                    "a": "Continuous learning and skill development",
+                    "b": "Relying only on existing knowledge",
+                    "c": "Learning without application",
+                    "d": "Avoiding professional development"
+                },
+                "correct_answer": "a",
+                "explanation": "Continuous learning maintains relevance and expertise."
+            },
+            {
+                "question": "What risk is most commonly associated with data analytics projects?",
+                "options": {
+                    "a": "Understanding core principles before implementation",
+                    "b": "Jumping directly to advanced techniques",
+                    "c": "Memorizing procedures without comprehension",
+                    "d": "Ignoring foundational knowledge"
+                },
+                "correct_answer": "a",
+                "explanation": "Solid understanding of fundamentals enables effective application."
+            },
+            {
+                "question": "Which practice significantly improves efficiency in data analytics?",
+                "options": {
+                    "a": "Clear documentation and knowledge sharing",
+                    "b": "Keeping information within small teams",
+                    "c": "Relying on verbal communication only",
+                    "d": "Avoiding written records"
+                },
+                "correct_answer": "a",
+                "explanation": "Documentation ensures consistency and facilitates collaboration."
+            }
+        ],
+        "roadmap_id": 14,
+        "student_id": 9,
+        "created_at": 1771305641,
+        "expires_at": 1771309241
+    }
+}
