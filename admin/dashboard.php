@@ -2,6 +2,7 @@
 session_start();
 include '../config/db.php';
 include '../config/authload.php';
+include '../config/db_helpers.php';
 
 // Ensure the user is an admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -11,16 +12,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 $admin_id = $_SESSION['user_id'];
 $admin_name = $_SESSION['name'];
-
-// Function to fetch a single value from the database
-function fetch_single_value($conn, $sql) {
-    $result = $conn->query($sql);
-    if ($result && $result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        return reset($row); // Return the first value in the row
-    }
-    return 0; // Return 0 if no result
-}
 
 // Fetch stats
 try {
