@@ -1,475 +1,236 @@
 <?php
-// admin/roadmaps.php
-
-// --- SETUP & SECURITY ---
 session_start();
-require_once __DIR__ . '/../auth/middleware.php';
-require_once __DIR__ . '/../config/db.php';
-requireAdmin();
+include '../config/db.php';
+include '../config/authload.php';
 
-// Check if it's fixed admin
-$is_fixed_admin = isset($_SESSION['is_fixed_admin']) && $_SESSION['is_fixed_admin'] === true;
-$admin_name = $_SESSION['name'] ?? 'Admin';
-
-// Get stats for sidebar
-try {
-    // Get pending roadmaps
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM roadmaps WHERE status = 'pending'");
-    $stmt->execute();
-    $pending_roadmaps = $stmt->fetchColumn();
-    
-    // Get recent feedback count (last 7 days)
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM feedback WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-    $stmt->execute();
-    $recent_feedback = $stmt->fetchColumn();
-    
-    // Get total active students for dashboard-like stats
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'active'");
-    $stmt->execute();
-    $total_students = $stmt->fetchColumn();
-    
-    // Get total approved roadmaps for stats
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM roadmaps WHERE status = 'approved'");
-    $stmt->execute();
-    $total_roadmaps = $stmt->fetchColumn();
-    
-    // Get total revenue
-    try {
-        $stmt = $pdo->prepare("SELECT SUM(amount) FROM payments WHERE status = 'success'");
-        $stmt->execute();
-        $total_revenue = $stmt->fetchColumn() ?: 0;
-    } catch (Exception $e) {
-        $total_revenue = 0;
-    }
-    
-} catch (PDOException $e) {
-    $pending_roadmaps = 0;
-    $recent_feedback = 0;
-    $total_students = 0;
-    $total_roadmaps = 0;
-    $total_revenue = 0;
+// Ensure the user is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit();
 }
 
-// Fetch all roadmaps with instructor names
-$stmt = $pdo->prepare("
-    SELECT 
-        r.id, 
-        r.title, 
-        u.name as instructor_name, 
-        r.price, 
-        r.status, 
-        r.created_at,
-        (SELECT COUNT(*) FROM roadmap_phases WHERE roadmap_id = r.id) as phase_count,
-        (SELECT COUNT(*) FROM enrollments WHERE roadmap_id = r.id) as enrollment_count
-    FROM roadmaps r
-    JOIN users u ON r.instructor_id = u.id
-    ORDER BY 
-        CASE r.status 
-            WHEN 'pending' THEN 1
-            WHEN 'changed' THEN 2
-            ELSE 3 
-        END,
-        r.created_at DESC
-");
-$stmt->execute();
-$roadmaps = $stmt->fetchAll();
+$admin_id = $_SESSION['user_id'];
+$admin_name = $_SESSION['name'];
 
+// Handle roadmap status updates
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roadmap_id']) && isset($_POST['status'])) {
+    $roadmap_id = (int)$_POST['roadmap_id'];
+    $status = $_POST['status'];
+    
+    // Validate status
+    if (in_array($status, ['approved', 'rejected'])) {
+        $stmt = $conn->prepare("UPDATE roadmaps SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $roadmap_id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'newStatus' => $status]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to update status.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Invalid status.']);
+    }
+    exit(); // Terminate script after AJAX request
+}
+
+// Search, filter and pagination
+$search = $_GET['search'] ?? '';
+$status_filter = $_GET['status'] ?? '';
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+// Base query
+$sql = "SELECT r.id, r.title, r.price, r.status, r.created_at, u.name as instructor_name
+        FROM roadmaps r
+        JOIN users u ON r.instructor_id = u.id";
+$count_sql = "SELECT COUNT(*) FROM roadmaps r JOIN users u ON r.instructor_id = u.id";
+
+// Build WHERE conditions
+$conditions = [];
+$params = [];
+$types = '';
+
+if (!empty($search)) {
+    $conditions[] = "(r.title LIKE ? OR u.name LIKE ?)";
+    $search_term = "%" . $search . "%";
+    $params[] = &$search_term;
+    $params[] = &$search_term;
+    $types .= 'ss';
+}
+
+if (!empty($status_filter)) {
+    $conditions[] = "r.status = ?";
+    $params[] = &$status_filter;
+    $types .= 's';
+}
+
+if (count($conditions) > 0) {
+    $sql .= " WHERE " . implode(' AND ', $conditions);
+    $count_sql .= " WHERE " . implode(' AND ', $conditions);
+}
+
+$sql .= " ORDER BY r.created_at DESC LIMIT ? OFFSET ?";
+$params[] = &$limit;
+$params[] = &$offset;
+$types .= 'ii';
+
+// Prepare and execute the main query
+$stmt = $conn->prepare($sql);
+if (!empty($types)) {
+    call_user_func_array([$stmt, 'bind_param'], array_merge([$types], $params));
+}
+$stmt->execute();
+$result = $stmt->get_result();
+
+// Prepare and execute the count query
+$count_stmt = $conn->prepare($count_sql);
+$count_params = array_slice($params, 0, -2); // Remove limit and offset
+$count_types = substr($types, 0, -2);
+if (!empty($count_types)) {
+    call_user_func_array([$count_stmt, 'bind_param'], array_merge([$count_types], $count_params));
+}
+$count_stmt->execute();
+$total_results = $count_stmt->get_result()->fetch_row()[0];
+$total_pages = ceil($total_results / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Roadmaps - Admin Panel</title>
+    <title>Manage Roadmaps - OneRoadmap</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
-        /* Fixed Sidebar Styles */
-        .fixed-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: 16rem; /* 256px */
-            background-color: white;
-            border-right: 1px solid #e5e7eb;
-            z-index: 50;
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 1rem;
-        }
-        .sidebar-footer {
-            flex-shrink: 0;
-            border-top: 1px solid #e5e7eb;
-            background: white;
-        }
-        .main-content-with-sidebar {
-            margin-left: 16rem;
-            min-height: 100vh;
-            background-color: #f9fafb;
-        }
-
-        /* Active link styling */
-        .active-link {
-            background-color: #eef2ff;
-            color: #4f46e5;
-            font-weight: 600;
-        }
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-pending { background-color: #fef3c7; color: #92400e; }
-        .status-approved { background-color: #d1fae5; color: #065f46; }
-        .status-rejected { background-color: #fee2e2; color: #991b1b; }
-        .status-changed { background-color: #fef3c7; color: #92400e; }
-        .hover-card:hover {
-            transform: translateY(-2px);
-            transition: transform 0.2s ease;
-        }
-        .stat-card {
-            transition: all 0.3s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
+        .fixed-sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 16rem; background-color: white; border-right: 1px solid #e5e7eb; z-index: 50; display: flex; flex-direction: column; }
+        .sidebar-content { flex: 1; overflow-y: auto; }
+        .main-content { margin-left: 16rem; }
     </style>
 </head>
 <body class="bg-gray-50">
 
-<!-- Fixed Sidebar -->
-<aside class="fixed-sidebar">
-    <!-- Sidebar Header -->
-    <div class="px-6 py-5 border-b border-gray-200">
-        <h1 class="text-xl font-bold text-indigo-600">SkillPath Builder</h1>
-        <span class="text-xs text-gray-500">Admin Panel</span>
-        <?php if ($is_fixed_admin): ?>
-            <span class="inline-block mt-1 text-xs px-2 py-1 bg-red-100 text-red-800 rounded">Fixed Admin</span>
-        <?php endif; ?>
-    </div>
-    
-    <!-- Scrollable Navigation -->
-    <div class="sidebar-content">
-        <nav class="pt-4">
-            <!-- Dashboard -->
-            <a href="<?php echo url('admin/dashboard.php'); ?>" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <i class="fas fa-tachometer-alt w-6 text-center"></i>
-                <span class="ml-3">Dashboard</span>
-            </a>
-            
-            <!-- Roadmaps (Active) -->
-            <a href="<?php echo url('admin/roadmaps.php'); ?>" class="flex items-center px-6 py-3 text-gray-700 active-link">
-                <i class="fas fa-road w-6 text-center"></i>
-                <span class="ml-3">Roadmaps</span>
-                <?php if ($pending_roadmaps > 0): ?>
-                    <span class="ml-auto mr-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full"><?php echo $pending_roadmaps; ?> pending</span>
-                <?php endif; ?>
-            </a>
-            
-            <!-- Instructors -->
-            <a href="<?php echo url('admin/instructors.php'); ?>" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <i class="fas fa-users-cog w-6 text-center"></i>
-                <span class="ml-3">Instructors</span>
-            </a>
-            
-            <!-- Students (New Option) -->
-            <a href="<?php echo url('admin/students.php'); ?>" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <i class="fas fa-user-graduate w-6 text-center"></i>
-                <span class="ml-3">Students</span>
-            </a>
-            
-            <!-- Feedback -->
-            <a href="<?php echo url('admin/feedback.php'); ?>" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <i class="fas fa-comments w-6 text-center"></i>
-                <span class="ml-3">Feedback</span>
-                <?php if ($recent_feedback > 0): ?>
-                    <span class="ml-auto mr-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full"><?php echo $recent_feedback; ?> new</span>
-                <?php endif; ?>
-            </a>
-            
-            <!-- Certificates -->
-            <a href="<?php echo url('admin/certificates.php'); ?>" class="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <i class="fas fa-certificate w-6 text-center"></i>
-                <span class="ml-3">Certificates</span>
-            </a>
-        </nav>
-    </div>
-    
-    <!-- Fixed Footer with Logout -->
-    <div class="sidebar-footer p-4">
-        <div class="mb-3 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded">
-            <p class="font-medium"><?php echo htmlspecialchars($admin_name); ?></p>
-            <p class="text-xs text-gray-500">Administrator</p>
+    <aside class="fixed-sidebar">
+        <div class="p-6">
+            <a href="dashboard.php" class="text-2xl font-bold text-gray-800">OneRoadmap</a>
         </div>
-        <a href="<?php echo url('auth/logout.php'); ?>" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg hover:text-red-600">
-            <i class="fas fa-sign-out-alt w-6 text-center"></i>
-            <span class="ml-3">Logout</span>
-        </a>
-    </div>
-</aside>
-
-<!-- Main Content Area -->
-<div class="main-content-with-sidebar">
-    <div class="p-8">
-        <div class="flex justify-between items-center mb-8">
-            <div>
-                <h1 class="text-4xl font-bold text-gray-800">Roadmap Management</h1>
-                <p class="text-gray-600 mt-2">Review and manage all submitted roadmaps.</p>
-            </div>
-            <div class="text-sm text-gray-500">
-                Last updated: <?php echo date('M j, Y g:i A'); ?>
-            </div>
+        <div class="sidebar-content px-4">
+            <nav class="flex flex-col space-y-2">
+                <a href="dashboard.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-tachometer-alt w-6 text-center"></i><span class="ml-3">Dashboard</span></a>
+                <a href="roadmaps.php" class="flex items-center w-full px-4 py-3 text-white bg-indigo-600 rounded-lg"><i class="fas fa-road w-6 text-center"></i><span class="ml-3">Roadmaps</span></a>
+                <a href="instructors.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-chalkboard-teacher w-6 text-center"></i><span class="ml-3">Instructors</span></a>
+                <a href="students.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-user-graduate w-6 text-center"></i><span class="ml-3">Students</span></a>
+                <a href="feedback.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-comment-dots w-6 text-center"></i><span class="ml-3">Feedback</span></a>
+                <a href="certificates.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"><i class="fas fa-certificate w-6 text-center"></i><span class="ml-3">Certificates</span></a>
+            </nav>
         </div>
-
-        <!-- Quick Stats (Dashboard Style) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <!-- Stat Card: Total Roadmaps -->
-            <div class="stat-card bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-                <div class="flex items-center">
-                    <div class="p-3 bg-blue-100 rounded-lg">
-                        <i class="fas fa-road text-blue-600 text-xl"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Total Roadmaps</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1"><?php echo $total_roadmaps; ?></p>
-                        <p class="text-xs text-gray-500 mt-1">Approved courses</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Stat Card: Total Students -->
-            <div class="stat-card bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-                <div class="flex items-center">
-                    <div class="p-3 bg-green-100 rounded-lg">
-                        <i class="fas fa-user-graduate text-green-600 text-xl"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Total Students</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1"><?php echo $total_students; ?></p>
-                        <p class="text-xs text-gray-500 mt-1">Active learners</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Stat Card: Total Revenue -->
-            <div class="stat-card bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
-                <div class="flex items-center">
-                    <div class="p-3 bg-yellow-100 rounded-lg">
-                        <i class="fas fa-wallet text-yellow-600 text-xl"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Total Revenue</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">$<?php echo number_format($total_revenue, 2); ?></p>
-                        <p class="text-xs text-gray-500 mt-1">From all payments</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Stat Card: Pending Review -->
-            <div class="stat-card bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
-                <div class="flex items-center">
-                    <div class="p-3 bg-red-100 rounded-lg">
-                        <i class="fas fa-clock text-red-600 text-xl"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Pending Review</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1"><?php echo $pending_roadmaps; ?></p>
-                        <p class="text-xs text-gray-500 mt-1">Awaiting approval</p>
-                    </div>
-                </div>
-            </div>
+        <div class="sidebar-footer p-4">
+            <div class="mb-3 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded"><p class="font-medium"><?php echo htmlspecialchars($admin_name); ?></p><p class="text-xs text-gray-500">Administrator</p></div>
+            <a href="../auth/logout.php" class="flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg hover:text-red-600"><i class="fas fa-sign-out-alt w-6 text-center"></i><span class="ml-3">Logout</span></a>
         </div>
+    </aside>
 
-        <!-- Status Filter Tabs -->
-        <div class="mb-6 bg-white rounded-xl shadow-sm p-4">
-            <div class="flex space-x-4">
-                <button class="px-4 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-medium" onclick="filterRoadmaps('all')">
-                    All Roadmaps
-                </button>
-                <button class="px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="filterRoadmaps('pending')">
-                    Pending
-                    <span class="ml-1 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full"><?php 
-                        echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'pending'; }));
-                    ?></span>
-                </button>
-                <button class="px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="filterRoadmaps('approved')">
-                    Approved
-                    <span class="ml-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full"><?php 
-                        echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'approved'; }));
-                    ?></span>
-                </button>
-                <button class="px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="filterRoadmaps('rejected')">
-                    Rejected
-                </button>
+    <main class="main-content p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Manage Roadmaps</h1>
+        
+        <form method="get" class="mb-6 flex space-x-4">
+            <div class="relative flex-grow">
+                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search by title or instructor..." class="w-full pl-10 pr-4 py-2 border rounded-lg">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
             </div>
-        </div>
+            <select name="status" class="border rounded-lg py-2 px-4">
+                <option value="">All Statuses</option>
+                <option value="pending" <?php if ($status_filter === 'pending') echo 'selected'; ?>>Pending</option>
+                <option value="approved" <?php if ($status_filter === 'approved') echo 'selected'; ?>>Approved</option>
+                <option value="rejected" <?php if ($status_filter === 'rejected') echo 'selected'; ?>>Rejected</option>
+            </select>
+            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">Filter</button>
+        </form>
 
-        <!-- Roadmaps Grid/Table -->
-        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-            <?php if (empty($roadmaps)): ?>
-                <div class="text-center py-16">
-                    <i class="fas fa-road text-gray-300 text-5xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-700">No Roadmaps Found</h3>
-                    <p class="text-gray-500 mt-2">No roadmaps have been submitted yet.</p>
-                </div>
-            <?php else: ?>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Roadmap</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Instructor</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+        <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <?php if ($result->num_rows > 0): ?>
+                        <?php while($row = $result->fetch_assoc()): ?>
+                            <tr id="roadmap-row-<?php echo $row['id']; ?>">
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['title']); ?></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm text-gray-700"><?php echo htmlspecialchars($row['instructor_name']); ?></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm text-gray-700">₹<?php echo htmlspecialchars(number_format($row['price'], 2)); ?></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <?php
+                                        $status_classes = [
+                                            'pending' => 'bg-yellow-100 text-yellow-800',
+                                            'approved' => 'bg-green-100 text-green-800',
+                                            'rejected' => 'bg-red-100 text-red-800',
+                                            'changed' => 'bg-blue-100 text-blue-800'
+                                        ];
+                                        $status_class = $status_classes[$row['status']] ?? 'bg-gray-100 text-gray-800';
+                                    ?>
+                                    <span class="status-badge px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>"><?php echo htmlspecialchars(ucfirst($row['status'])); ?></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="roadmap_view.php?id=<?php echo $row['id']; ?>" class="text-indigo-600 hover:text-indigo-900 mr-4">View</a>
+                                    <?php if ($row['status'] == 'pending' || $row['status'] == 'rejected'): ?>
+                                        <button onclick="updateStatus(<?php echo $row['id']; ?>, 'approved')" class="text-green-600 hover:text-green-900 mr-4">Approve</button>
+                                    <?php endif; ?>
+                                    <?php if ($row['status'] == 'pending' || $row['status'] == 'approved'): ?>
+                                        <button onclick="updateStatus(<?php echo $row['id']; ?>, 'rejected')" class="text-red-600 hover:text-red-900">Reject</button>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php foreach ($roadmaps as $roadmap): ?>
-                                <tr class="hover:bg-gray-50 transition-colors duration-200 roadmap-row" data-status="<?php echo $roadmap['status']; ?>">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                                <i class="fas fa-road text-indigo-600"></i>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($roadmap['title']); ?></div>
-                                                <div class="text-sm text-gray-500">$<?php echo number_format($roadmap['price'], 2); ?></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($roadmap['instructor_name']); ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
-                                                <i class="fas fa-layer-group mr-1"></i> <?php echo $roadmap['phase_count']; ?> phases
-                                            </span>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <i class="fas fa-users mr-1"></i> <?php echo $roadmap['enrollment_count']; ?> enrolled
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <?php
-                                        $status_class = '';
-                                        switch($roadmap['status']) {
-                                            case 'pending': $status_class = 'status-pending'; break;
-                                            case 'approved': $status_class = 'status-approved'; break;
-                                            case 'rejected': $status_class = 'status-rejected'; break;
-                                            case 'changed': $status_class = 'status-changed'; break;
-                                            default: $status_class = 'bg-gray-100 text-gray-800';
-                                        }
-                                        ?>
-                                        <span class="status-badge <?php echo $status_class; ?>">
-                                            <?php echo ucfirst($roadmap['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo date('M d, Y', strtotime($roadmap['created_at'])); ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <a href="<?php echo url('admin/roadmap_view.php?id=' . $roadmap['id']); ?>" 
-                                           class="text-indigo-600 hover:text-indigo-900 font-medium">
-                                            <i class="fas fa-eye mr-1"></i> Review
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No roadmaps found.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
 
-        <!-- Quick Stats Footer -->
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex items-center">
-                    <div class="p-3 bg-yellow-100 rounded-lg">
-                        <i class="fas fa-clock text-yellow-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Pending Review</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">
-                            <?php echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'pending'; })); ?>
-                        </p>
-                    </div>
+        <?php if ($total_pages > 1): ?>
+            <div class="mt-6 flex justify-between items-center">
+                <span class="text-sm text-gray-600">Page <?php echo $page; ?> of <?php echo $total_pages; ?></span>
+                <div class="flex space-x-2">
+                    <?php if ($page > 1): ?>
+                        <a href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>" class="px-4 py-2 border rounded-md text-sm hover:bg-gray-100">Previous</a>
+                    <?php endif; ?>
+                    <?php if ($page < $total_pages): ?>
+                        <a href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>" class="px-4 py-2 border rounded-md text-sm hover:bg-gray-100">Next</a>
+                    <?php endif; ?>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex items-center">
-                    <div class="p-3 bg-green-100 rounded-lg">
-                        <i class="fas fa-check-circle text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Approved</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">
-                            <?php echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'approved'; })); ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex items-center">
-                    <div class="p-3 bg-red-100 rounded-lg">
-                        <i class="fas fa-times-circle text-red-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Rejected</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">
-                            <?php echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'rejected'; })); ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex items-center">
-                    <div class="p-3 bg-blue-100 rounded-lg">
-                        <i class="fas fa-edit text-blue-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-sm font-medium text-gray-500">Needs Changes</h3>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">
-                            <?php echo count(array_filter($roadmaps, function($r) { return $r['status'] == 'changed'; })); ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+        <?php endif; ?>
+    </main>
 
-<script>
-    // Filter roadmaps by status
-    function filterRoadmaps(status) {
-        const rows = document.querySelectorAll('.roadmap-row');
-        rows.forEach(row => {
-            if (status === 'all' || row.dataset.status === status) {
-                row.style.display = '';
+    <script>
+    function updateStatus(roadmapId, newStatus) {
+        if (!confirm(`Are you sure you want to ${newStatus} this roadmap?`)) return;
+
+        fetch('roadmaps.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `roadmap_id=${roadmapId}&status=${newStatus}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // For simplicity, we just reload the page to see the changes.
+                // A more advanced implementation would update the row dynamically.
+                location.reload();
             } else {
-                row.style.display = 'none';
+                alert('Error: ' + data.message);
             }
-        });
-        
-        // Update active tab
-        document.querySelectorAll('button').forEach(btn => {
-            btn.classList.remove('bg-indigo-100', 'text-indigo-700');
-            btn.classList.add('hover:bg-gray-100', 'text-gray-700');
-        });
-        
-        event.target.classList.add('bg-indigo-100', 'text-indigo-700');
-        event.target.classList.remove('hover:bg-gray-100', 'text-gray-700');
+        })
+        .catch(error => console.error('Error:', error));
     }
-</script>
-
+    </script>
 </body>
 </html>
